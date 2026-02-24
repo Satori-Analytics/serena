@@ -619,9 +619,11 @@ class ProjectCommands(AutoRegisteringGroup):
         default="WARNING",
         help="Log level for indexing.",
     )
-    @click.option("--timeout", type=float, default=10, help="Timeout for indexing a single file.")
-    def index(project: str, name: str | None, language: tuple[str, ...], log_level: str, timeout: float) -> None:
+    @click.option("--timeout", type=float, default=None, help="Timeout for indexing a single file.")
+    def index(project: str, name: str | None, language: tuple[str, ...], log_level: str, timeout: float | None) -> None:
         serena_config = SerenaConfig.from_config_file()
+        if timeout is None:
+            timeout = serena_config.tool_timeout
         registered_project = serena_config.get_registered_project(project, autoregister=True)
         if registered_project is None:
             # Project not found; auto-create it
