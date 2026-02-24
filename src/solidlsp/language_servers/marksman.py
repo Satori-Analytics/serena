@@ -39,7 +39,7 @@ class Marksman(SolidLanguageServer):
     """
 
     class DependencyProvider(LanguageServerDependencyProviderSinglePath):
-        DEFAULT_MARKSMAN_VERSION = "2024-12-18"
+        DEFAULT_MARKSMAN_VERSION = "2026-02-08"
 
         @classmethod
         def _runtime_dependencies(cls, version: str) -> RuntimeDependencyCollection:
