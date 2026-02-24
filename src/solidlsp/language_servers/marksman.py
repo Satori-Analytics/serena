@@ -25,7 +25,7 @@ class Marksman(SolidLanguageServer):
     """
 
     class DependencyProvider(LanguageServerDependencyProviderSinglePath):
-        marksman_releases = "https://github.com/artempyanykh/marksman/releases/download/2024-12-18"
+        marksman_releases = "https://github.com/artempyanykh/marksman/releases/download/2026-02-08"
         runtime_dependencies = RuntimeDependencyCollection(
             [
                 RuntimeDependency(
