@@ -84,34 +84,47 @@ class LanguageServerManager:
         :param factory: the factory for language server creation
         :return: the instance
         """
-        language_servers: dict[Language, SolidLanguageServer] = {}
-        threads = []
-        exceptions = {}
-        lock = threading.Lock()
 
-        def start_language_server(language: Language) -> None:
-            try:
-                with LogTime(f"Language server startup (language={language.value})"):
-                    language_server = factory.create_language_server(language)
-                    language_server.start()
-                    if not language_server.is_running():
-                        raise RuntimeError(f"Failed to start the language server for language {language.value}")
-                    with lock:
-                        language_servers[language] = language_server
-            except Exception as e:
-                log.error(f"Error starting language server for language {language.value}: {e}", exc_info=e)
-                with lock:
-                    exceptions[language] = e
+        class StartLSThread(threading.Thread):
+            def __init__(self, language: Language):
+                super().__init__(target=self._start_language_server, name="StartLS:" + language.value)
+                self.language = language
+                self.language_server: SolidLanguageServer | None = None
+                self.exception: Exception | None = None
+
+            def _start_language_server(self) -> None:
+                try:
+                    with LogTime(f"Language server startup (language={self.language.value})"):
+                        self.language_server = factory.create_language_server(self.language)
+                        self.language_server.start()
+                        if not self.language_server.is_running():
+                            raise RuntimeError(f"Failed to start the language server for language {self.language.value}")
+                except Exception as e:
+                    log.error(f"Error starting language server for language {self.language.value}: {e}", exc_info=e)
+                    self.exception = e
 
         # start language servers in parallel threads
+        threads = []
         for language in languages:
-            thread = threading.Thread(target=start_language_server, args=(language,), name="StartLS:" + language.value)
+            thread = StartLSThread(language)
             thread.start()
             threads.append(thread)
+
+        # collect language servers and exceptions
+        language_servers: dict[Language, SolidLanguageServer] = {}
+        exceptions: dict[Language, Exception] = {}
         for thread in threads:
             thread.join()
+            if thread.exception is not None:
+                exceptions[thread.language] = thread.exception
+            elif thread.language_server is not None:
+                language_servers[thread.language] = thread.language_server
 
-        # If any server failed to start up, raise an exception and stop all started language servers
+        # If any server failed to start up, raise an exception and stop all started language servers.
+        # We intentionally fail fast here. The user's intention is to work with all the specified languages,
+        # so if any of them is not available, it is better to fail immediately and bring the failure to the
+        # user's attention instead of silently continuing with a subset of the language servers and potentially
+        # causing suboptimal agent behaviour.
         if exceptions:
             for ls in language_servers.values():
                 ls.stop()
