@@ -2,6 +2,13 @@
 
 Status of the `main` branch. Changes prior to the next official version change will appear here.
 
+* New language support:
+    * Add Solidity language server support (`Language.SOLIDITY`) using the
+      Nomic Foundation `@nomicfoundation/solidity-language-server`. Automatically
+      installed via npm. Supports `.sol` files with go-to-definition, find references,
+      document symbols, hover, and diagnostics. Works best with a `foundry.toml` or
+      `hardhat.config.js` in the project root.
+
 * General:
     * Add monorepo/multi-language support
         * Project configuration files (`project.yml`) can now define multiple languages.
@@ -49,6 +56,7 @@ Status of the `main` branch. Changes prior to the next official version change w
 
 * Language support:
 
+  * **Add support for Lean 4** via built-in `lean --server` with cross-file reference support (requires `lean` and `lake` via [elan](https://github.com/leanprover/elan))
   * **Add support for OCaml** via ocaml-lsp-server with cross-file reference support on OCaml 5.2+ (requires opam; see [setup guide](docs/03-special-guides/ocaml_setup_guide_for_serena.md))
   * **Add Phpactor as alternative PHP language server** (specify `php_phpactor` as language; requires PHP 8.1+)
   * **Add support for Fortran** via fortls language server (requires `pip install fortls`)

@@ -307,6 +307,7 @@ markers = [
   "ruby: language server running for Ruby (uses ruby-lsp)",
   "zig: language server running for Zig",
   "lua: language server running for Lua",
+  "luau: language server running for Luau",
   "nix: language server running for Nix",
   "dart: language server running for Dart",
   "erlang: language server running for Erlang",
@@ -328,6 +329,8 @@ markers = [
   "matlab: language server running for MATLAB (requires MATLAB R2021b+)",
   "systemverilog: language server running for SystemVerilog (uses verible-verilog-ls)",
   "hlsl: language server running for HLSL shaders (uses shader-language-server)",
+  "lean4: language server running for Lean 4",
+  "solidity: language server running for Solidity (uses @nomicfoundation/solidity-language-server)",
 ]
 
 [tool.codespell]
