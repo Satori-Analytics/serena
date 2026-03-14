@@ -52,6 +52,9 @@ dependencies = [
 name = "cloudsmith"
 url = "https://dl.cloudsmith.io/basic/satorianalytics/tools/python/simple/"
 publish-url = "https://python.cloudsmith.io/satorianalytics/tools/"
+authenticate = "always"
+explicit = true
+
 
 [project.scripts]
 serena = "serena.cli:top_level"
