@@ -14,6 +14,9 @@ jobs:
   cpu:
     name: Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      UV_INDEX_CLOUDSMITH_USERNAME: token
+      UV_INDEX_CLOUDSMITH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_READ_KEY }}
     strategy:
       fail-fast: false
       matrix:
