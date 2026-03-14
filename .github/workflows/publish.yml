@@ -33,8 +33,8 @@ jobs:
 
       - name: Publish to Cloudsmith
         env:
-          UV_PUBLISH_USERNAME: ${{ vars.SATORI_CLOUDSMITH_PUBLISH_USER }}
+          UV_PUBLISH_USERNAME: token
           UV_PUBLISH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_PUBLISH_KEY }}
-          UV_INDEX_CLOUDSMITH_USERNAME: ${{ vars.SATORI_CLOUDSMITH_READ_USER }}
+          UV_INDEX_CLOUDSMITH_USERNAME: token
           UV_INDEX_CLOUDSMITH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_READ_KEY }}
         run: uv publish --index cloudsmith dist/*
