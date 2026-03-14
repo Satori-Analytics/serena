@@ -8,6 +8,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      UV_PUBLISH_USERNAME: token
+      UV_PUBLISH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_PUBLISH_KEY }}
+      UV_INDEX_CLOUDSMITH_USERNAME: token
+      UV_INDEX_CLOUDSMITH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_READ_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,9 +37,4 @@ jobs:
         run: uv build --wheel --out-dir dist/
 
       - name: Publish to Cloudsmith
-        env:
-          UV_PUBLISH_USERNAME: token
-          UV_PUBLISH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_PUBLISH_KEY }}
-          UV_INDEX_CLOUDSMITH_USERNAME: token
-          UV_INDEX_CLOUDSMITH_PASSWORD: ${{ secrets.SATORI_CLOUDSMITH_READ_KEY }}
         run: uv publish --index cloudsmith dist/*
