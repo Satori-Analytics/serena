@@ -3,7 +3,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [project]
-name = "serena-agent"
+name = "satori-serena"
 version = "0.1.4"
 description = ""
 authors = [{ name = "Oraios AI", email = "info@oraios-ai.de" }]
@@ -38,11 +38,11 @@ dependencies = [
   "beautifulsoup4>=4.14.2",
 ]
 
+
 [[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
+name = "cloudsmith"
+url = "https://dl.cloudsmith.io/basic/satorianalytics/tools/python/simple/"
+publish-url = "https://python.cloudsmith.io/satorianalytics/tools/"
 
 [project.scripts]
 serena = "serena.cli:top_level"
@@ -54,7 +54,7 @@ text = "MIT"
 
 [project.optional-dependencies]
 dev = [
-  "black[jupyter]>=23.7.0, <26",  # black 26 is incompatible with our pathspec version
+  "black[jupyter]>=23.7.0, <26", # black 26 is incompatible with our pathspec version
   "jinja2",
   # In version 1.0.4 we get a NoneType error related to some config conversion (yml_analytics is None and should be a list)
   "mypy>=1.16.1",
@@ -118,7 +118,7 @@ exclude = "^build/|^docs/|^test/resources/"
 
 [[tool.mypy.overrides]]
 module = "test.*"
-disallow_untyped_defs = false  # untyped defs are OK in tests
+disallow_untyped_defs = false # untyped defs are OK in tests
 
 [tool.poe.env]
 PYDEVD_DISABLE_FILE_VALIDATION = "1"
