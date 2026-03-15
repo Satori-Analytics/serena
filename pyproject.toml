@@ -41,9 +41,8 @@ dependencies = [
 
 [[tool.uv.index]]
 name = "cloudsmith"
-url = "https://dl.cloudsmith.io/basic/satorianalytics/tools/python/simple/"
-publish-url = "https://python.cloudsmith.io/satorianalytics/tools/"
-authenticate = "always"
+url = "https://dl.cloudsmith.io/public/satorianalytics/oss-tools/python/simple/"
+publish-url = "https://python.cloudsmith.io/satorianalytics/oss-tools/"
 explicit = true
 
 
