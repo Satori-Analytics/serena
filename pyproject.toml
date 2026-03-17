@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "satori-serena"
-version = "0.1.4"
+version = "0.1.5.dev1773774725"
 description = ""
 authors = [{ name = "Oraios AI", email = "info@oraios-ai.de" }]
 readme = "README.md"
