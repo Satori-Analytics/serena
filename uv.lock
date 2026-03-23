@@ -1916,7 +1916,7 @@ wheels = [
 
 [[package]]
 name = "satori-serena"
-version = "0.1.5.dev1773774966"
+version = "0.1.5.dev1774295902"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
