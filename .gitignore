@@ -271,4 +271,6 @@ cabal.project.local*
 zz-misc/
 vue-implementation/
 
-!.claude/
+.claude/
+
+Publish-Package.ps1
