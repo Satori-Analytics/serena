@@ -1,55 +1,85 @@
 <#
 .SYNOPSIS
-    Bumps version, commits, and creates a GitHub release for satori-serena.
+    Sets version, commits, and creates a GitHub release for satori-serena.
 
 .DESCRIPTION
-    Automates the release process: bumps the version in pyproject.toml using uv,
+    Automates the release process: sets or bumps the version in pyproject.toml using uv,
     commits the change, pushes, and creates a GitHub release that triggers the
     Cloudsmith publish workflow.
 
-.PARAMETER Bump
-    Version bump type: dev (default), patch, minor, or major.
-    Dev bumps patch and appends a Unix timestamp pre-release segment (e.g. 0.1.4 → 0.1.5.dev1742000000).
+    Requires either an explicit semver version or one of -Patch, -Minor, -Major.
+
+.PARAMETER Version
+    An explicit semver version to set (e.g. 1.0.0, 1.2.3.dev1742000000, 2.0.0.alpha).
+    The base must be MAJOR.MINOR.PATCH (all numeric). An optional pre-release suffix
+    (.dev*, .alpha*, .beta*, .rc*, .post*) is allowed.
+
+.PARAMETER Patch
+    Bump the patch component (e.g. 0.1.4 -> 0.1.5).
+
+.PARAMETER Minor
+    Bump the minor component (e.g. 0.1.4 -> 0.2.0).
+
+.PARAMETER Major
+    Bump the major component (e.g. 0.1.4 -> 1.0.0).
 
 .EXAMPLE
-    .\Publish-Package.ps1                  # Dev release    (0.1.4 → 0.1.5.dev1742000000)
-    .\Publish-Package.ps1 -Bump patch      # Patch release  (0.1.4 → 0.1.5)
-    .\Publish-Package.ps1 -Bump minor      # Minor release  (0.1.4 → 0.2.0)
-    .\Publish-Package.ps1 -Bump major      # Major release  (0.1.4 → 1.0.0)
+    .\Publish-Package.ps1 1.2.0               # Set exact version 1.2.0
+    .\Publish-Package.ps1 1.2.0.dev1742000000 # Set dev pre-release version
+    .\Publish-Package.ps1 -Patch              # Bump patch  (0.1.4 -> 0.1.5)
+    .\Publish-Package.ps1 -Minor              # Bump minor  (0.1.4 -> 0.2.0)
+    .\Publish-Package.ps1 -Major              # Bump major  (0.1.4 -> 1.0.0)
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet("patch", "minor", "major", "dev")]
-    [string]$Bump = "dev"
+    [Parameter(Position = 0)]
+    [string]$Version,
+
+    [switch]$Patch,
+    [switch]$Minor,
+    [switch]$Major
 )
 
 $ErrorActionPreference = "Stop"
 
-# ── Bump version ─────────────────────────────────────────────────────────────
-$version = (uv version --short).Trim()
+# ── Validate arguments ──────────────────────────────────────────────────────
+$switchCount = [int]$Patch.IsPresent + [int]$Minor.IsPresent + [int]$Major.IsPresent
 
-if ($Bump -eq "dev") {
-    $devDate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    # If already on a dev version, reuse the same base (don't re-bump patch)
-    $base = $version -replace '\.dev\d+$', ''
-    if ($base -eq $version) {
-        # Stable version — bump patch first to get the new base
-        uv version --bump patch
-        $base = (uv version --short).Trim()
-    }
-    $devVersion = "$base.dev$devDate"
-    Write-Host "Setting dev version: $devVersion ..." -ForegroundColor Cyan
-    uv version $devVersion
+if (-not $Version -and $switchCount -eq 0) {
+    Write-Error "A version is required. Provide an explicit version (e.g. 1.0.0) or use -Patch, -Minor, or -Major."
+    exit 1
+}
+
+if ($Version -and $switchCount -gt 0) {
+    Write-Error "Specify either an explicit version or a bump switch (-Patch, -Minor, -Major), not both."
+    exit 1
+}
+
+if ($switchCount -gt 1) {
+    Write-Error "Specify only one of -Patch, -Minor, or -Major."
+    exit 1
+}
+
+if ($Version -and $Version -notmatch '^\d+\.\d+\.\d+(\.(?:dev|alpha|beta|rc|post)\w*)?$') {
+    Write-Error "Invalid version '$Version'. Must be semver: MAJOR.MINOR.PATCH with optional pre-release suffix (e.g. 1.0.0, 1.2.3.dev123, 2.0.0.alpha1)."
+    exit 1
+}
+
+# ── Set / bump version ──────────────────────────────────────────────────────
+if ($Version) {
+    Write-Host "Setting version: $Version ..." -ForegroundColor Cyan
+    uv version $Version
 }
 else {
-    Write-Host "Bumping version ($Bump) ..." -ForegroundColor Cyan
-    uv version --bump $Bump
+    $bump = if ($Patch) { "patch" } elseif ($Minor) { "minor" } else { "major" }
+    Write-Host "Bumping version ($bump) ..." -ForegroundColor Cyan
+    uv version --bump $bump
 }
 
 $version = (uv version --short).Trim()
 Write-Host "New version: v$version" -ForegroundColor Green
 
-# ── Commit and push ──────────────────────────────────────────────────────────
+# ── Commit and push ─────────────────────────────────────────────────────────
 Write-Host "Committing and pushing ..." -ForegroundColor Cyan
 git add pyproject.toml
 git add uv.lock
@@ -59,7 +89,7 @@ git push
 # ── Create GitHub release ────────────────────────────────────────────────────
 Write-Host "Creating GitHub release v$version ..." -ForegroundColor Cyan
 $ghArgs = @("release", "create", "v$version", "--title", "v$version", "--generate-notes", "-R", "satori-analytics/serena")
-if ($Bump -eq "dev") { $ghArgs += "--prerelease" }
+if ($version -match '\.(dev|alpha|beta|rc|post)') { $ghArgs += "--prerelease" }
 & gh @ghArgs
 
 Write-Host ""
