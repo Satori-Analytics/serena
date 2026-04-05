@@ -271,4 +271,4 @@ cabal.project.local*
 zz-misc/
 vue-implementation/
 
-.claude/
+!.claude/
