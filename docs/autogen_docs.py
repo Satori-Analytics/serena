@@ -194,8 +194,28 @@ def autogen_about_intro_features():
         f.write(autogen_info)
         f.write("# About Serena\n\n")
         f.write(f"**{tagline}**\n\n")
+
+        # adjust link
         about_text = about_text.replace("resources/serena-block-diagram.svg", "https://raw.githubusercontent.com/oraios/serena/main/resources/serena-block-diagram.svg")
-        about_text = re.subn(r"^See the \[Quick Start.*?$", r"", about_text, flags=re.MULTILINE)[0]
+
+        # remove centred links
+        about_text = re.subn(r'^<div align="center">.*?</div>\s*<br>$', "", about_text, flags=re.MULTILINE | re.DOTALL)[0]
+
+        # remove statements with links to quick start guide
+        about_text = re.subn(r"^.*\[Quick Start.*?$", r"", about_text, flags=re.MULTILINE)[0]
+
+        # remove callouts
+        about_text = re.subn(r"^> \[!\w+\]\s+(^>.*?$)+", "", about_text, flags=re.MULTILINE)[0]
+
+        # replace "Quick Demo" with "Video Introduction", removing the short video
+        about_text = about_text.replace("# Quick Demo", "# Video Introduction")
+        about_text = re.subn(r"^https://github.com/user-attachments/.*?$", "", about_text, flags=re.MULTILINE)[0]
+        about_text = about_text.replace(":tv: Longer video:", "Watch our video:")
+
+        # remove emojis (e.g. :tv:)
+        about_text = re.subn(r":\w+:\s+", "", about_text)[0]
+
+
         f.write(f"{about_text}\n\n")
 
     jetbrains_marketplace_link = ('```{raw} html\n'

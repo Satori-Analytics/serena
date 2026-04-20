@@ -5,7 +5,7 @@ from typing import Any, Literal
 import serena.jetbrains.jetbrains_types as jb
 from serena.code_editor import JetBrainsCodeEditor
 from serena.jetbrains.jetbrains_plugin_client import JetBrainsPluginClient
-from serena.jetbrains.jetbrains_types import SymbolDTO
+from serena.jetbrains.jetbrains_types import SymbolDTO, SymbolDTOUtil
 from serena.symbol import JetBrainsSymbolDictGrouper
 from serena.tools import Tool, ToolMarkerBeta, ToolMarkerOptional, ToolMarkerSymbolicEdit, ToolMarkerSymbolicRead
 from serena.util.text_utils import find_text_coordinates
@@ -58,6 +58,8 @@ class JetBrainsFindSymbolTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptional):
             for the case where the symbol is a class, this will return its methods).
             Ignored if `include_body=True`. Default 0.
         :param relative_path: Optional. Restrict search to this file or directory. If not specified, searches entire codebase.
+            Note: for external dependencies, this must be an identifier starting with `<ext` that you have received
+            earlier (don't try to guess!).
         :param include_body: If True, include the symbol's source code. Use judiciously.
         :param include_info: whether to include additional info (hover-like, typically including docstring and signature),
             about the symbol.
@@ -71,8 +73,16 @@ class JetBrainsFindSymbolTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptional):
         if include_body:
             depth = 0  # ignore user-specified depth if body is requested
 
+        name_path_pattern = self._sanitize_input_param(name_path_pattern)
+
+        if relative_path:
+            relative_path = self._sanitize_input_param(relative_path)
         if relative_path == ".":
             relative_path = None
+
+        if relative_path is not None and relative_path.startswith(jb.JB_EXTERNAL_FILE_PREFIX):
+            search_deps = True
+
         with JetBrainsPluginClient.from_project(self.project) as client:
             if include_body:
                 include_quick_info = False
@@ -126,9 +136,13 @@ class JetBrainsMoveTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, ToolMa
         target_parent_name_path: str | None = None,
     ) -> str:
         """
-        Moves a symbol, file or directory to a different location. The target location is the new parent
-        of the symbol, i.e. the moved entity is never renamed by the operation, only moved.
-        References to affected symbols are automatically updated.
+        Moves a symbol, file or directory to a different location and automatically update all references to affected symbols.
+        **Important**: this tool should always be preferred to naive moving (e.g. via file system operations or edits)
+        as it is much more reliable and efficient. It is always safe to use this tool. For some symbols, moving may not be applicable,
+        and will result in no edits and a suitable error message.
+        The target location is the new parent of the symbol,
+        i.e. the moved entity is never renamed by the operation, only moved.
+
 
         Valid moves:
         - Symbol:
@@ -145,6 +159,10 @@ class JetBrainsMoveTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, ToolMa
         :param target_relative_path: the relative path of the target directory or file.
         :param target_parent_name_path: the name path of the target parent symbol.
         """
+        name_path = name_path or None
+        target_relative_path = target_relative_path or None
+        target_parent_name_path = target_parent_name_path or None
+        relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.move(
                 name_path=name_path,
@@ -168,17 +186,23 @@ class JetBrainsSafeDeleteTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, 
         propagate: bool = False,
     ) -> str:
         """
-        Safely deletes a symbol, checking for usages first. It is also
-        possible to request deleting of usages and cleaning up of unused code.
+        Safely deletes a symbol, file, or directory, checking for usages first and propagating deletion, if desired.
+        Propagation means it is possible to request deleting of usages and cleaning up of unused code.
+        Propagation is powerful for cleaning up code but should be used with care, and only when you are sure that
+        **Important**: this tool should always be preferred to naive deleting (e.g. via file system operations or edits).
+        When using it, you don't have to search for usages first, as the tool will do it for you.
 
         :param relative_path: the relative path to the file containing the symbol to delete.
         :param name_path: the name path of the symbol to delete.
             A name path identifies a symbol within a source file, e.g. "MyClass/my_method".
+            Omit for deleting a file or directory.
         :param delete_even_if_used: whether to force deletion even if the symbol still has usages.
             Default is False (safe mode: will report usages instead of deleting).
         :param propagate: whether to propagate the deletion to usages of the symbol and also
             remove symbols that become unused after the deletion. Default is False.
         """
+        relative_path = self._sanitize_input_param(relative_path)
+        name_path = name_path or None
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.safe_delete(
                 name_path=name_path,
@@ -204,12 +228,15 @@ class JetBrainsInlineSymbol(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, To
         Inlines a symbol (usually a method/function, but also classes may be amenable to inlining,
         which turns invocation into anonymous class creation),
         replacing all call sites with the symbol's body.
+        **Important**: this tool should always be preferred to naive inlining (e.g. via searching for references and
+        editing them).
 
         :param name_path: the name path of the symbol to inline.
         :param relative_path: the relative path to the file containing the symbol to inline.
         :param keep_definition: whether to keep the original method definition after inlining all call sites.
             May be ignored in some cases (e.g. when inlining a class).
         """
+        relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.inline_symbol(
                 name_path=name_path,
@@ -241,6 +268,7 @@ class JetBrainsFindReferencingSymbolsTool(Tool, ToolMarkerSymbolicRead, ToolMark
         :param relative_path: the relative path to the file containing the symbol (must be a file, not a directory)
         :param max_answer_chars: max characters for the result (-1 for default). If exceeded, no content/a shortened result is returned.
         """
+        relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.find_references(
                 name_path=name_path,
@@ -249,7 +277,19 @@ class JetBrainsFindReferencingSymbolsTool(Tool, ToolMarkerSymbolicRead, ToolMark
             )
         symbol_dicts = response_dict["symbols"]
 
-        # capture file paths before grouping, which mutates the dicts
+        # replace reference line number (if present) by actual line/context
+        for symbol_dict in symbol_dicts:
+            if "reference_line_no" in symbol_dict:
+                ref_line = symbol_dict["reference_line_no"]
+                ref_relative_path = symbol_dict["relative_path"]
+                if not SymbolDTOUtil.is_external_symbol(symbol_dict) and ref_line is not None and ref_line >= 0:
+                    content_around_ref = self.project.retrieve_content_around_line(
+                        relative_file_path=ref_relative_path, line=ref_line, context_lines_before=1, context_lines_after=1
+                    )
+                    symbol_dict["context"] = content_around_ref.to_display_string()
+                    del symbol_dict["reference_line_no"]
+
+        # capture file paths before grouping
         ref_paths = [s.get("relative_path", "unknown") for s in symbol_dicts]
 
         result = self.symbol_dict_grouper.group(symbol_dicts)
@@ -295,6 +335,7 @@ class JetBrainsGetSymbolsOverviewTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOp
         :param max_answer_chars: max characters for the result (-1 for default). If exceeded, no content/a shortened result is returned.
         :param include_file_documentation: whether to include the file's docstring. Default False.
         """
+        relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             symbol_overview = client.get_symbols_overview(
                 relative_path=relative_path, depth=depth, include_file_documentation=include_file_documentation
@@ -397,6 +438,7 @@ class JetBrainsTypeHierarchyTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptiona
             -1 means the default value from the config will be used.
         :return: Compact JSON with file-grouped hierarchy. Error string if not applicable.
         """
+        relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             subtypes = None
             supertypes = None
@@ -451,6 +493,9 @@ class JetBrainsFindDeclarationTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptio
             Uses Python syntax with MULTILINE and DOTALL flags enabled.
         :param include_body: whether to include the symbol's body in the result. Default False.
         """
+        relative_path = self._sanitize_input_param(relative_path)
+        regex = self._sanitize_input_param(regex)
+
         editor = self.create_code_editor()
         content = editor.read_file(relative_path)
         coords = find_text_coordinates(content, regex, require_unique=True)
@@ -490,16 +535,33 @@ class JetBrainsRenameTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional):
     Renames a symbol, file or directory throughout the codebase using the JetBrains backend.
     """
 
-    def apply(self, relative_path: str, new_name: str, name_path: str | None = None) -> str:
+    def apply(
+        self,
+        relative_path: str,
+        new_name: str,
+        name_path: str | None = None,
+        rename_in_comments: bool = False,
+        rename_in_text_occurrences: bool = False,
+    ) -> str:
         """
         Renames a symbol, file or directory throughout the codebase.
+        Note: renaming in comments/text is on a best-effort basis by the IDE; if the symbol name is non-unique, further
+        verification is recommended.
 
         :param relative_path: if `name_path` is passed, the relative path of the file containing the symbol.
             Otherwise, the path to the directory or file to rename.
         :param new_name: the new name
         :param name_path: the name path of the symbol to rename or None if renaming a file or directory.
+        :param rename_in_comments: whether to also rename occurrences in comments. Default True.
+        :param rename_in_text_occurrences: whether to also rename occurrences in text. Default True.
         :return: a status message
         """
         code_editor = JetBrainsCodeEditor(self.project)
-        result = code_editor.rename_symbol(name_path=name_path, relative_path=relative_path, new_name=new_name)
+        result = code_editor.rename_symbol(
+            name_path=name_path,
+            relative_path=relative_path,
+            new_name=new_name,
+            rename_in_comments=rename_in_comments,
+            rename_in_text_occurrences=rename_in_text_occurrences,
+        )
         return self._to_json(result)
