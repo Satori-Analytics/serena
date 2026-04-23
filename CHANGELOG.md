@@ -14,9 +14,17 @@ Status of the `main` branch. Changes prior to the next official version change w
        `initial_instructions`). Now they are passed directly in the activation message (and excluded from a subsequent `initial_instructions` call).
      - Fix: Project activation message was provided more than once for case of dynamic project activation followed
        by `initial_instructions` #1372
+     - Always provide full activation message upon calling `activate_project` (even if project was already active in the same session) #1384
+       This is necessary, because some clients (e.g. Claude Desktop) will reuse a single session across chats.
   - Security: Forbid `".."` in memory names to disallow accessing files outside dedicated memory directories
   - Security: Add check for tool being read-only in the project server (previously only checked in `query_project` tool, i.e. client side)
   - Usage reporting now also includes the name of the Serena context that is used 
+  - Fix: restricted `insert_after_symbol` to raise if used on an assignment or similar (can't reliably determine the symbol range)
+  - Fix: Failure to collect project ignore spec now logs the error and downstream tasks fail fast, fixing hanging LS initialisation
+  - Improve loading of `project.yml` files: Gracefully handle user errors involving incorrect use of None/empty instead of list
+  - Project server: 
+     - `query_project`: Support use of project root instead of project name #1388
+     - `list_queryable_projects`: Return both project names and project roots 
 
 * JetBrains:
   - `Move` and `SafeDelete` tools: transform empty string to None (counteracts client errors)
@@ -32,6 +40,10 @@ Status of the `main` branch. Changes prior to the next official version change w
   - Fix: `rename_symbol` for Vue files now correctly propagates edits to the TypeScript server, enabling cross-file renames in `.vue` files 
   - Fix: Lean4 stale cache — empty document symbol responses (returned before `lake build` completes) are no longer persisted, preventing symbols from being permanently hidden #1356
 
+Dashboard:
+  - Add configurable dashboard interface mode (new global configuration setting `web_dashboard_interface`):
+    Three modes (browser, native app with tray, tray manager for aggregating multiple instances) are supported, depending on the OS
+  - Fix: Memory leaks in frontend when using Chromium-based browsers/Windows webview #1389
 
 # v1.1.2 (2026-04-14)
 
